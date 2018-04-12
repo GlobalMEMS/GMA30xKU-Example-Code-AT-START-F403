@@ -92,7 +92,9 @@ void  I2C1_Init(void)
   I2Cx_sda_pin_clock();
 
   RCC_APB2PeriphClockCmd(RCC_APB2PERIPH_AFIO, ENABLE);
+#ifdef I2C1_REMAP
   GPIO_PinsRemapConfig(GPIO_Remap_I2C1, ENABLE);
+#endif
 
   GPIO_InitStructure.GPIO_Pins =  I2Cx_SCL_PIN | I2Cx_SDA_PIN;
   GPIO_InitStructure.GPIO_MaxSpeed = GPIO_MaxSpeed_50MHz;
