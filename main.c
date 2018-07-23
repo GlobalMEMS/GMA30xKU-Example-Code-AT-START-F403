@@ -42,6 +42,13 @@
 #include "bus_support.h"
 #include "gma30xku.h"
 #include "gSensor_autoNil.h"
+#include "Lcd_Driver.h"
+#include "GUI.h"
+#include "usart.h"
+#include "delay.h"
+#include "key.h"
+#include "string.h"
+#include "math.h"
 
 /* Private macro -------------------------------------------------------------*/
 #define RADIAN_TO_DEGREE            (180. / 3.14159265358979323846) //1 radian = 180/pi degree
@@ -50,120 +57,8 @@
 u8 ui8StartAutoNilFlag = 0;
 
 /* Private variables ---------------------------------------------------------*/
-USART_InitType USART_InitStructure;
-static __IO uint32_t TimingDelay;
-
 /* Private function prototypes -----------------------------------------------*/
-
 /* Private functions ---------------------------------------------------------*/
-/**
- * @brief  Inserts a delay time.
- * @param  nTime: specifies the delay time length, in milliseconds.
- * @retval None
- */
-void Delay(__IO uint32_t nTime)
-{
-  TimingDelay = nTime;
-
-  while(TimingDelay != 0);
-}
-
-/**
- * @brief  Decrements the TimingDelay variable.
- * @param  None
- * @retval None
- */
-void TimingDelay_Decrement(void)
-{
-  if (TimingDelay != 0x00){
-    TimingDelay--;
-  }
-}
-
-/**
- * @brief  Retargets the C library printf function to the USART1.
- * @param
- * @retval
- */
-int fputc(int ch, FILE *f)
-{
-  while((USART1->STS & 0X40) == 0)
-    ;
-
-  USART1->DT = (u8)ch;
-  return ch;
-}
-
-/**
- * @brief  Configures the nested vectored interrupt controller.
- * @param  None
- * @retval None
- */
-void NVIC_Configuration(void)
-{
-  NVIC_InitType NVIC_InitStructure;
-
-  /* Enable the USARTx Interrupt */
-  NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);
-}
-
-/**
- * @brief  Configures COM port.
- * @param  None
- * @retval None
- */
-void USART_COMInit()
-{
-
-  GPIO_InitType GPIO_InitStructure;
-
-  /* USARTx configured as follow:
-     - BaudRate = 115200 baud
-     - Word Length = 8 Bits
-     - One Stop Bit
-     - No parity check
-     - Hardware flow control disabled (RTS and CTS signals)
-     - Receive and transmit enabled
-  */
-  USART_InitStructure.USART_BaudRate = 115200;
-  USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-  USART_InitStructure.USART_StopBits = USART_StopBits_1;
-  USART_InitStructure.USART_Parity = USART_Parity_No;
-  USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-  USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-
-
-  /* Enable GPIO clock */
-  RCC_APB2PeriphClockCmd(RCC_APB2PERIPH_GPIOA, ENABLE);
-
-  /* Enable UART clock */
-  RCC_APB2PeriphClockCmd(RCC_APB2PERIPH_USART1, ENABLE);
-
-  /* Configure USART Tx as alternate function push-pull */
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-  GPIO_InitStructure.GPIO_Pins = TX_PIN_NUMBER;
-  GPIO_InitStructure.GPIO_MaxSpeed = GPIO_MaxSpeed_50MHz;
-  GPIO_Init(TXRX_GPIOx, &GPIO_InitStructure);
-
-  /* Configure USART Rx as input floating */
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_InitStructure.GPIO_Pins = RX_PIN_NUMBER;
-  GPIO_Init(TXRX_GPIOx, &GPIO_InitStructure);
-
-  /* USART configuration */
-  USART_Init(USART1, &USART_InitStructure);
-
-  /* Enable USART */
-  USART_Cmd(USART1, ENABLE);
-
-  /* Enable the EVAL_COM1 Receive interrupt: this interrupt is generated when the
-     EVAL_COM1 receive data register is not empty */
-  USART_INTConfig(USART1, USART_INT_RDNE, ENABLE);
-}
 
 #ifdef  USE_FULL_ASSERT
 
@@ -186,6 +81,86 @@ void assert_failed(uint8_t* file, uint32_t line)
 
 #endif
 
+const u16 RESOLUTION_X = 128;
+const u16 RESOLUTION_Y = 120;
+const u16 FONT_HEIGHT = 16;
+const u16 LINE_HEIGHT = FONT_HEIGHT + 2;
+const u16 MAX_DISPLAY_ITEM = 9;
+void showMsg(u16 x, u16 line, u8* str, u16 color, u8 reDraw){
+
+  int i;
+  char* subStr;
+
+  if(reDraw) Lcd_Clear(GRAY0);
+
+  subStr = strtok((char*)str, "\n");
+
+  for(i = line; subStr; ++i){
+    Gui_DrawFont_GBK16(x, LINE_HEIGHT * i, color, GRAY0, (u8*)subStr);
+    subStr = strtok(NULL, "\n");
+  }
+}
+
+void floatCatToSciStr(float fIn, u8 precision, u8* outStr){
+
+  s32 i = 0;
+  float fTmp;
+  s32 s32Dec, s32Dig, s32Exp;
+
+  if(fIn == 0){
+    s32Dec = s32Dig = s32Exp = 0;
+  }
+  else{
+
+    s32Exp = 0;
+    fTmp = fIn;
+
+    if(fabs(fTmp) < 1){
+      do{
+	s32Exp -= 1;
+	fTmp *= 10.0f;
+      }while(fabs(fTmp) < 1);
+    }
+    else if(fabs(fTmp) >= 10){
+      do{
+	s32Exp += 1;
+	fTmp /= 10.0f;
+      }while(fabs(fTmp) >= 10);
+    }
+
+    s32Dec = (s32)fTmp;
+    fTmp -= s32Dec;
+
+    //precision
+    for(i = 0; i < precision; ++i)
+      fTmp *= 10;
+
+    s32Dig = (s32)(fabs(fTmp));
+
+  }
+
+  itoa(s32Dec, &outStr[strlen((const char*)outStr)]);
+  strcat((char*)outStr, ".");
+
+  fTmp = 1;
+  for(i = 0; i < precision; ++i)
+    fTmp *= 10;
+  for(i = 0; i < precision; ++i){
+    fTmp /= 10;
+    if(s32Dig < fTmp){
+      strcat((char*)outStr, "0");
+    }
+    else{
+      itoa(s32Dig, &outStr[strlen((const char*)outStr)]);
+      break;
+    }
+  }
+  if(s32Exp != 0){
+    strcat((char*)outStr, "e");
+    itoa(s32Exp, &outStr[strlen((const char*)outStr)]);
+  }
+}
+
 /**
  * @brief   Main program
  * @param  None
@@ -193,7 +168,6 @@ void assert_failed(uint8_t* file, uint32_t line)
  */
 int main(void)
 {
-  RCC_ClockType RccClkSource;
   bus_support_t gma30xku_bus;
   raw_data_xyzt_t rawData;
   raw_data_xyzt_t offsetData;
@@ -201,21 +175,21 @@ int main(void)
   float fTilt_degree;
   float gVal[3];
   int i;
+  u8 str[64];
 
-  /* NVIC configuration */
-  NVIC_Configuration();
-
-  /* USART COM configuration */
-  USART_COMInit();
+  /* System Initialization */
+  SystemInit();
 
   /* I2C1 initialization */
   I2C1_Init();
 
-  RCC_GetClocksFreq(&RccClkSource);
-  if (SysTick_Config(RccClkSource.AHBCLK_Freq / 1000)){
-    /* Capture error */
-    while(1);
-  }
+  /* Init Key */
+  KEY_Init();
+
+  /* Initialize the LCD */
+  uart_init(19200);
+  delay_init();
+  Lcd_Init();
 
   /* GMA30xKU I2C bus setup */
   bus_init_I2C1(&gma30xku_bus, GMA30xKU_8BIT_I2C_ADDR);  //Initialize bus support to I2C1
@@ -227,18 +201,42 @@ int main(void)
   /* GMA30xKU initialization */
   gma30xku_initialization();
 
-  /* GMA30xKU Offset AutoNil */
-  printf("Place and hold g-sensor in level for offset AutoNil.\r");
-  printf("Press y when ready.\n");
+  /* User message: press Key1 to start offset AutoNil */
+  strcpy((char*)str, "Hold g-sensor in\nlevel for offset\nAutoNil.");
+  showMsg(0, 0, str, BLACK, 1);
+  strcpy((char*)str, "Press Key1 when\nready.");
+  showMsg(0, 4, str, RED, 0);
 
   do{
-    Delay(10);
-  }while(ui8StartAutoNilFlag == 0);
+    delay_ms(10);
+  }while(KEY_Scan() != KEY1_PRES);
 
   //Conduct g-sensor AutoNil, gravity is along the positive Z-axis
   gSensorAutoNil(gma30xku_read_data_xyz, AUTONIL_POSITIVE + AUTONIL_Z, GMA30xKU_RAW_DATA_SENSITIVITY, &offsetData);
 
-  printf("Offset_XYZ=%d,%d,%d\n", offsetData.u.x, offsetData.u.y, offsetData.u.z);
+  /* User message: show offset */
+  strcpy((char*)str, "Offset(code):\nX= ");
+  itoa(offsetData.u.x, &str[strlen((const char*)str)]);
+  strcat((char*)str, "\nY= ");
+  itoa(offsetData.u.y, &str[strlen((const char*)str)]);
+  strcat((char*)str, "\nZ= ");
+  itoa(offsetData.u.z, &str[strlen((const char*)str)]);
+  showMsg(0, 0, str, BLACK, 1);
+  strcpy((char*)str, "Press Key1 to\ncontinue");
+  showMsg(0, 5, str, RED, 0);
+
+  do{
+    delay_ms(10);
+  }while(KEY_Scan() != KEY1_PRES);
+
+  strcpy((char*)str, "Raw XYZT(code):");
+  showMsg(0, 0, str, BLACK, 1);
+  strcpy((char*)str, "Calib XYZ(code):");
+  showMsg(0, 2, str, BLACK, 0);
+  strcpy((char*)str, "G-value (g):");
+  showMsg(0, 4, str, BLACK, 0);
+  strcpy((char*)str, "Tilt:       deg");
+  showMsg(0, 8, str, BLACK, 0);
 
   while (1){
 
@@ -259,13 +257,47 @@ int main(void)
 			/ sqrt(calibData.u.x*calibData.u.x + calibData.u.y*calibData.u.y + calibData.u.z*calibData.u.z)
 			) * RADIAN_TO_DEGREE;
 
-    printf("Raw XYZT (code)=%d,%d,%d,%d\n", rawData.u.x, rawData.u.y, rawData.u.z, rawData.u.t);
-    printf("Calib_XYZ (code)=%d,%d,%d\n", calibData.u.x, calibData.u.y, calibData.u.z);
-    printf("g-value (g)=%.2f, %.2f, %.2f\n", gVal[0], gVal[1], gVal[2]);
-    printf("Tilt=%.2fDeg\n", fTilt_degree);
+    /* User message: Raw data*/
+    strcpy((char*)str, "");
+    itoa(rawData.u.x, &str[strlen((const char*)str)]);
+    strcat((char*)str, ",");
+    itoa(rawData.u.y, &str[strlen((const char*)str)]);
+    strcat((char*)str, ",");
+    itoa(rawData.u.z, &str[strlen((const char*)str)]);
+    strcat((char*)str, ",");
+    itoa(rawData.u.t, &str[strlen((const char*)str)]);
+    strcat((char*)str, "       ");
+    showMsg(0, 1, str, BLUE, 0);
+
+    /* User message: Calibrated data*/
+    strcpy((char*)str, "");
+    itoa(calibData.u.x, &str[strlen((const char*)str)]);
+    strcat((char*)str, ",");
+    itoa(calibData.u.y, &str[strlen((const char*)str)]);
+    strcat((char*)str, ",");
+    itoa(calibData.u.z, &str[strlen((const char*)str)]);
+    strcat((char*)str, "       ");
+    showMsg(0, 3, str, BLUE, 0);
+
+    /* User message: g-value */
+    strcpy((char*)str, "");
+    strcat((char*)str, "gx= ");
+    floatCatToSciStr(gVal[0], 3, str);
+    strcat((char*)str, "       \ngy= ");
+    floatCatToSciStr(gVal[1], 3, str);
+    strcat((char*)str, "       \ngz= ");
+    floatCatToSciStr(gVal[2], 3, str);
+    strcat((char*)str, "       ");
+    showMsg(0, 5, str, BLUE, 0);
+
+    /* User message: Tilt angle */
+    strcpy((char*)str, "");
+    itoa((s32)(fTilt_degree > 0 ? (fTilt_degree+0.5f):(fTilt_degree-0.5f)), &str[strlen((const char*)str)]);
+    strcat((char*)str, "  ");
+    showMsg(50, 8, str, BLUE, 0);
 
     /* Delay 1 sec */
-    Delay(1000);
+    delay_ms(1000);
   }
 }
 

@@ -4,7 +4,7 @@ AT-START-F403 + GMA30xKU example code
 Requirements
 ------------
 - AT-START-F403 development board
-- GMA30xKU: GMA302KU, GMA303KU, or GMA305KU
+- Sensor Fusion Arduino Daughter Board V1.0: GMA303KU is on the sensor board
 
 I2C Connections
 ---------------
@@ -29,5 +29,5 @@ You may change the behavior of this initialization function to suit your purpose
 
 Usage of AutoNil
 ----------------
- * The program will do an offset AutoNil when executed. Hold the g-sensor steady and maintain in level facing up, then press 'y' after the program prompt for input.
+ * The program will do an offset AutoNil when executed. Hold the board steady and maintain in level facing up, then press **Key1** after the program prompt for input.
  * You may change the `DATA_AVE_NUM` macro in the gSensor_autoNil.h for the moving averae order for the offset estimation. Defautl is 32.

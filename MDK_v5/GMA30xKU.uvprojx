@@ -334,7 +334,7 @@
               <MiscControls></MiscControls>
               <Define>AT32F403Zx_HD,LIBRARY_VERSION</Define>
               <Undefine></Undefine>
-              <IncludePath>..;..\LibGMEMS;..\LibGMEMS\GMA30xKU;..\..\..\Libraries\AT32F4xx_StdPeriph_Driver\inc;..\..\..\Libraries\CMSIS\CM4\CoreSupport;..\..\..\Libraries\CMSIS\CM4\DeviceSupport;..\..\HyperTerminal_Interrupt</IncludePath>
+              <IncludePath>..;..\LibGMEMS;..\LibGMEMS\GMA30xKU;..\..\..\Libraries\AT32F4xx_StdPeriph_Driver\inc;..\..\..\Libraries\CMSIS\CM4\CoreSupport;..\..\..\Libraries\CMSIS\CM4\DeviceSupport;..\..\HyperTerminal_Interrupt;..\FusionBoard\HARDWARE\GUI;..\FusionBoard\HARDWARE\KEY;..\FusionBoard\HARDWARE\LCD;..\FusionBoard\SYSTEM\delay;..\FusionBoard\SYSTEM\sys;..\FusionBoard\SYSTEM\usart</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -438,6 +438,11 @@
               <FileType>1</FileType>
               <FilePath>..\..\..\Libraries\AT32F4xx_StdPeriph_Driver\src\at32f4xx_dbgmcu.c</FilePath>
             </File>
+            <File>
+              <FileName>at32f4xx_spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\Libraries\AT32F4xx_StdPeriph_Driver\src\at32f4xx_spi.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -462,6 +467,36 @@
               <FileName>gma30xku.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\LibGMEMS\GMA30xKU\gma30xku.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>FusionBoard</GroupName>
+          <Files>
+            <File>
+              <FileName>Lcd_Driver.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FusionBoard\HARDWARE\LCD\Lcd_Driver.c</FilePath>
+            </File>
+            <File>
+              <FileName>delay.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FusionBoard\SYSTEM\delay\delay.c</FilePath>
+            </File>
+            <File>
+              <FileName>GUI.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FusionBoard\HARDWARE\GUI\GUI.c</FilePath>
+            </File>
+            <File>
+              <FileName>usart.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FusionBoard\SYSTEM\usart\usart.c</FilePath>
+            </File>
+            <File>
+              <FileName>key.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FusionBoard\HARDWARE\KEY\key.c</FilePath>
             </File>
           </Files>
         </Group>

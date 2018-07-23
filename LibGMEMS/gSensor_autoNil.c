@@ -31,10 +31,10 @@
 
 #include "stdio.h"
 #include "gSensor_autoNil.h"
+#include "delay.h"
 
-#define DELAY_MS(dt) Delay(dt)
+#define DELAY_MS(dt) delay_ms(dt)
 
-void Delay(uint32_t);
 
 /*!
  * @brief Auto estimate the g-sensor offset (int32).

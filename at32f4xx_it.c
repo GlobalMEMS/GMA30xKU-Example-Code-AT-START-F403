@@ -39,16 +39,9 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
-#define USARTx_IRQHandler   USART1_IRQHandler
-
 /* global variables ---------------------------------------------------------*/
-extern uint8_t c_input;
-extern u8 ui8StartAutoNilFlag;
-
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
-void TimingDelay_Decrement(void);
-
 /* Private functions ---------------------------------------------------------*/
 
 /**
@@ -133,40 +126,6 @@ void DebugMon_Handler(void)
  */
 void PendSV_Handler(void)
 {
-}
-
-/**
- * @brief  This function handles SysTick Handler.
- * @param  None
- * @retval None
- */
-void SysTick_Handler(void)
-{
-  TimingDelay_Decrement();
-}
-
-/******************************************************************************/
-/*            AT32F4xx Peripherals Interrupt Handlers                        */
-/******************************************************************************/
-
-/**
- * @brief  This function handles USARTx global interrupt request.
- * @param  None
- * @retval None
- */
-void USARTx_IRQHandler(void)
-{
-  uint8_t RxBuffer;
-
-  while(USART_GetITStatus(USART1, USART_INT_RDNE) != RESET){
-    /* Read one byte from the receive data register */
-    RxBuffer = (USART_ReceiveData(USART1));
-
-    printf("%c", RxBuffer);
-    if(RxBuffer == 'y' || RxBuffer == 'Y'){
-      ui8StartAutoNilFlag = 1;
-    }
-  }
 }
 
 /******************************************************************************/
